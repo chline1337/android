@@ -59,11 +59,11 @@ import com.owncloud.android.MainApp;
 import com.owncloud.android.R;
 import com.owncloud.android.datamodel.FileDataStorageManager;
 import com.owncloud.android.datamodel.OCFile;
+import com.owncloud.android.db.PreferenceManager;
 import com.owncloud.android.files.services.FileDownloader;
 import com.owncloud.android.files.services.FileDownloader.FileDownloaderBinder;
 import com.owncloud.android.files.services.FileUploader;
 import com.owncloud.android.files.services.FileUploader.FileUploaderBinder;
-import com.owncloud.android.files.services.IndexedForest;
 import com.owncloud.android.files.services.TransferRequester;
 import com.owncloud.android.lib.common.operations.RemoteOperation;
 import com.owncloud.android.lib.common.operations.RemoteOperationResult;
@@ -94,6 +94,7 @@ import com.owncloud.android.ui.preview.PreviewVideoActivity;
 import com.owncloud.android.ui.preview.PreviewVideoFragment;
 import com.owncloud.android.utils.DisplayUtils;
 import com.owncloud.android.utils.Extras;
+import com.owncloud.android.utils.FileStorageUtils;
 import com.owncloud.android.utils.PermissionUtil;
 
 import java.io.File;
@@ -144,7 +145,7 @@ public class FileDisplayActivity extends HookActivity
 
     private LocalBroadcastManager mLocalBroadcastManager;
 
-    private IndexedForest<FileDisplayActivity> mPendingCameraUploads = new IndexedForest<>();
+    // private IndexedForest<FileDisplayActivity> mPendingCameraUploads = new IndexedForest<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -538,6 +539,7 @@ public class FileDisplayActivity extends HookActivity
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         boolean retval = true;
+
         switch (item.getItemId()) {
             case R.id.action_sync_account: {
                 startSynchronization();
@@ -560,7 +562,8 @@ public class FileDisplayActivity extends HookActivity
                 break;
             }
             case R.id.action_sort: {
-                Integer sortOrder = getSortOrder(this);
+                final int sortOrder = getSortOrder(this);
+                final boolean sortAscending = PreferenceManager.getSortAscending(this);
 
                 AlertDialog.Builder builder = new AlertDialog.Builder(this);
                 builder.setTitle(R.string.actionbar_sort_title)
@@ -568,20 +571,36 @@ public class FileDisplayActivity extends HookActivity
                                 new DialogInterface.OnClickListener() {
                                     public void onClick(DialogInterface dialog, int which) {
                                         switch (which) {
-                                            case 0:
-                                                sortByName(true);
+                                            case FileStorageUtils.SORT_NAME:
+                                                sortByName(sortAscending);
                                                 break;
-                                            case 1:
-                                                sortByDate(false);
+                                            case FileStorageUtils.SORT_DATE:
+                                                sortByDate(sortAscending);
                                                 break;
-                                            case 2:
-                                                sortBySize(false);
+                                            case FileStorageUtils.SORT_SIZE:
+                                                sortBySize(sortAscending);
                                         }
 
                                         dialog.dismiss();
                                     }
                                 });
                 builder.create().show();
+                break;
+            }
+            case R.id.action_sort_descending: {
+                item.setChecked(!item.isChecked());
+                final boolean sortAscending = !item.isChecked();
+                PreferenceManager.setSortAscending(sortAscending, this);
+                switch (getSortOrder(this)) {
+                    case FileStorageUtils.SORT_NAME:
+                        sortByName(sortAscending);
+                        break;
+                    case FileStorageUtils.SORT_DATE:
+                        sortByDate(sortAscending);
+                        break;
+                    case FileStorageUtils.SORT_SIZE:
+                        sortBySize(sortAscending);
+                }
                 break;
             }
             case R.id.action_switch_view: {
