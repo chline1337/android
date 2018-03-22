@@ -790,8 +790,10 @@ public class AuthenticatorActivity extends AccountAuthenticatorActivity
             mOperationsServiceBinder = null;
         }
 
-        if (mCustomTabServiceConnection != null) {
+        if (mCustomTabServiceConnection != null
+                && mCustomTabPackageName != null) {
             unbindService(mCustomTabServiceConnection);
+
         }
 
         super.onDestroy();
@@ -1073,34 +1075,19 @@ public class AuthenticatorActivity extends AccountAuthenticatorActivity
         OAuth2Provider oAuth2Provider = OAuth2ProvidersRegistry.getInstance().getProvider();
         oAuth2Provider.setAuthorizationServerUri(mServerInfo.mBaseUrl);
 
-        OAuth2RequestBuilder builder = oAuth2Provider.getOperationBuilder();
+        OAuth2RequestBuilder builder =
+                oAuth2Provider.getOperationBuilder();
         builder.setGrantType(OAuth2GrantType.AUTHORIZATION_CODE);
         builder.setRequest(OAuth2RequestBuilder.OAuthRequest.GET_AUTHORIZATION_CODE);
 
-        String authorizationCodeUri = builder.buildUri();
-
-        // Show OAuth web dialog
-        ArrayList<String> targetUrls = new ArrayList<>();
-        targetUrls.add(getString(R.string.oauth2_redirect_uri));    // target URI for successful authorization
-        targetUrls.add(mServerInfo.mBaseUrl + OwnCloudClient.FILES_WEB_PATH);
-
-
-        /*
-        LoginWebViewDialog oAuthWebViewDialog = LoginWebViewDialog.newInstance(
-            authorizationCodeUri,
-            targetUrls,
-            AuthenticationMethod.BEARER_TOKEN
-        );
-
-
-
-        oAuthWebViewDialog.show(getSupportFragmentManager(), OAUTH_DIALOG_TAG);
-        */
-
-        openUriWithCustomTab(authorizationCodeUri);
+        if(mCustomTabPackageName != null) {
+            openUrlWithCustomTab(builder.buildUri());
+        } else {
+            openUrlInBrowser(builder.buildUri());
+        }
     }
 
-    private void openUriWithCustomTab(String url) {
+    private void openUrlWithCustomTab(String url) {
         TypedValue tvBackground = new TypedValue();
         getTheme().resolveAttribute(R.attr.colorPrimary, tvBackground, true);
 
@@ -1108,6 +1095,7 @@ public class AuthenticatorActivity extends AccountAuthenticatorActivity
                 .setToolbarColor(tvBackground.data)
                 .setStartAnimations(this, R.anim.slide_in_right, R.anim.slide_out_left)
                 .setExitAnimations(this, R.anim.slide_in_left, R.anim.slide_out_right)
+                .setShowTitle(true)
                 .build();
 
         try {
@@ -1115,7 +1103,12 @@ public class AuthenticatorActivity extends AccountAuthenticatorActivity
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
 
+    private void openUrlInBrowser(String url) {
+        Intent intent = new Intent(Intent.ACTION_VIEW);
+        intent.setData(Uri.parse(url));
+        startActivity(intent);
     }
 
 
